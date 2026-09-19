@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Old Dad's 3.0 — Store</title>
+<meta name="description" content="Buy permanent kits for Old Dad's 3.0 Rust server. Instant unlock after purchase.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://xmxj90x.github.io/lineup/buy.html">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#121317; --surface:#1A1C22; --surface-2:#21242C; --surface-3:#282C36;
+    --border:#2B2F3A; --border-2:#383D4A;
+    --text:#EDEEF2; --dim:#9396A3; --faint:#5E6270;
+    --accent:#FF5C39; --accent-ink:#3A1408;
+    --good:#3DDC97; --live:#FF3B5C;
+    --r:14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:'Inter',system-ui,sans-serif; font-size:15px; line-height:1.5;
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  ::selection{background:var(--accent); color:#fff}
+  a{color:inherit; text-decoration:none}
+  button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit}
+
+  /* Top bar */
+  .topbar{
+    position:sticky; top:0; z-index:50;
+    display:flex; align-items:center; gap:18px;
+    padding:14px 26px; background:rgba(18,19,23,.92);
+    backdrop-filter:blur(12px); border-bottom:1px solid var(--border);
+  }
+  .brand{display:flex; align-items:center; gap:10px}
+  .brand-dot{
+    width:11px; height:11px; border-radius:50%; background:var(--live);
+    box-shadow:0 0 0 0 rgba(255,59,92,.6); animation:pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(255,59,92,.55)}
+    70%{box-shadow:0 0 0 9px rgba(255,59,92,0)}
+    100%{box-shadow:0 0 0 0 rgba(255,59,92,0)}
+  }
+  .brand-name{font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:21px; letter-spacing:-.02em}
+  .brand-name span{color:var(--accent)}
+  .back-link{
+    margin-left:auto; font-size:13.5px; color:var(--dim); font-weight:500;
+    padding:8px 14px; border-radius:9px; border:1px solid var(--border);
+    transition:border-color .12s, color .12s;
+  }
+  .back-link:hover{border-color:var(--border-2); color:var(--text)}
+
+  /* Layout */
+  .wrap{max-width:980px; margin:0 auto; padding:40px 22px 80px}
+
+  .hero{text-align:center; margin-bottom:42px}
+  .hero h1{
+    font-family:'Bricolage Grotesque',sans-serif; font-weight:800;
+    font-size:clamp(28px,5vw,38px); letter-spacing:-.03em; margin-bottom:10px;
+  }
+  .hero p{color:var(--dim); font-size:16px; max-width:480px; margin:0 auto 18px}
+  .linked-badge{
+    display:inline-flex; align-items:center; gap:8px;
+    background:rgba(61,220,151,.1); border:1px solid rgba(61,220,151,.28);
+    color:var(--good); font-size:13px; font-weight:600;
+    padding:8px 16px; border-radius:999px;
+  }
+  .linked-badge code{
+    font-family:'JetBrains Mono',monospace; font-size:12.5px;
+    background:rgba(0,0,0,.25); padding:2px 7px; border-radius:6px;
+  }
+  .not-linked{
+    background:rgba(255,92,57,.1); border-color:rgba(255,92,57,.3); color:#FFB39E;
+  }
+
+  /* Grid */
+  .grid{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));
+    gap:18px; margin-bottom:48px;
+  }
+
+  .card{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:16px; padding:22px 18px 18px;
+    display:flex; flex-direction:column; transition:border-color .15s, transform .15s;
+    position:relative; overflow:hidden;
+  }
+  .card:hover{border-color:var(--border-2); transform:translateY(-2px)}
+  .card.featured{
+    border-color:rgba(255,92,57,.45);
+    background:linear-gradient(165deg, rgba(255,92,57,.08), var(--surface) 55%);
+  }
+  .card.featured::before{
+    content:"MOST POPULAR"; position:absolute; top:12px; right:12px;
+    font-size:10px; font-weight:700; letter-spacing:.04em;
+    background:var(--accent); color:#fff; padding:3px 8px; border-radius:6px;
+  }
+
+  .tier-name{
+    font-family:'Bricolage Grotesque',sans-serif; font-weight:800;
+    font-size:20px; margin-bottom:4px;
+  }
+  .price{
+    font-family:'JetBrains Mono',monospace; font-weight:700;
+    font-size:28px; color:var(--accent); margin-bottom:14px;
+  }
+  .price span{font-size:14px; color:var(--dim); font-weight:500}
+
+  .features{list-style:none; margin-bottom:20px; flex:1}
+  .features li{
+    font-size:13.5px; color:var(--dim); padding:5px 0 5px 22px;
+    position:relative;
+  }
+  .features li::before{
+    content:"✓"; position:absolute; left:0; color:var(--good); font-weight:700;
+  }
+
+  .buy-btn{
+    display:block; width:100%; text-align:center;
+    background:var(--accent); color:#fff; font-weight:700; font-size:14.5px;
+    padding:12px 16px; border-radius:11px;
+    transition:filter .12s, transform .12s;
+  }
+  .buy-btn:hover{filter:brightness(1.08)}
+  .buy-btn:active{transform:scale(.98)}
+  .buy-btn:disabled{
+    background:var(--surface-3); color:var(--faint); cursor:not-allowed;
+    filter:none;
+  }
+  .card.featured .buy-btn{background:linear-gradient(135deg,#FF5C39,#FF3B7C)}
+
+  /* Info box */
+  .info{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:22px 24px; margin-bottom:32px;
+  }
+  .info h3{
+    font-family:'Bricolage Grotesque',sans-serif; font-weight:700;
+    font-size:16px; margin-bottom:10px;
+  }
+  .info ul{padding-left:18px; color:var(--dim); font-size:14px}
+  .info li{margin-bottom:6px}
+  .info strong{color:var(--text)}
+
+  .footer{
+    text-align:center; color:var(--faint); font-size:13px; margin-top:40px;
+  }
+  .footer a{color:var(--dim); text-decoration:underline}
+  .footer a:hover{color:var(--text)}
+
+  @media (max-width:560px){
+    .topbar{padding:12px 16px}
+    .wrap{padding:28px 16px 60px}
+    .grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="https://xmxj90x.github.io/lineup/" class="brand">
+    <div class="brand-dot"></div>
+    <div class="brand-name">Lineup</div>
+  </a>
+  <a href="https://xmxj90x.github.io/lineup/" class="back-link">← Back</a>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <h1>Old Dad's 3.0 Store</h1>
+    <p>Permanent kits that stay on your account forever. Unlock instantly after purchase.</p>
+    <div id="statusBadge" class="linked-badge not-linked">
+      No SteamID detected — open this page from the in-game <code>/buy</code> command
+    </div>
+  </div>
+
+  <div class="grid" id="packages">
+    <!-- Bronze -->
+    <div class="card">
+      <div class="tier-name">Bronze</div>
+      <div class="price">$5 <span>one-time</span></div>
+      <ul class="features">
+        <li>Starter kit access</li>
+        <li>Permanent unlock</li>
+        <li>Claim anytime in-game</li>
+      </ul>
+      <button class="buy-btn" data-tier="bronze" data-price="5" disabled>Coming Soon</button>
+    </div>
+
+    <!-- Silver -->
+    <div class="card">
+      <div class="tier-name">Silver</div>
+      <div class="price">$10 <span>one-time</span></div>
+      <ul class="features">
+        <li>Better tools & gear</li>
+        <li>Permanent unlock</li>
+        <li>Claim anytime in-game</li>
+      </ul>
+      <button class="buy-btn" data-tier="silver" data-price="10" disabled>Coming Soon</button>
+    </div>
+
+    <!-- Gold (featured) -->
+    <div class="card featured">
+      <div class="tier-name">Gold</div>
+      <div class="price">$15 <span>one-time</span></div>
+      <ul class="features">
+        <li>Strong weapons & armor</li>
+        <li>Permanent unlock</li>
+        <li>Claim anytime in-game</li>
+      </ul>
+      <button class="buy-btn" data-tier="gold" data-price="15" disabled>Coming Soon</button>
+    </div>
+
+    <!-- Diamond -->
+    <div class="card">
+      <div class="tier-name">Diamond</div>
+      <div class="price">$25 <span>one-time</span></div>
+      <ul class="features">
+        <li>Best kit on the server</li>
+        <li>Permanent unlock</li>
+        <li>Claim anytime in-game</li>
+      </ul>
+      <button class="buy-btn" data-tier="diamond" data-price="25" disabled>Coming Soon</button>
+    </div>
+  </div>
+
+  <div class="info">
+    <h3>How it works</h3>
+    <ul>
+      <li>Type <strong>/buy</strong> in-game to open this page (your Steam account is automatically linked).</li>
+      <li>Choose a kit and pay with Stripe.</li>
+      <li>The kit permission is granted to your account automatically.</li>
+      <li>In-game type <strong>/kit</strong> and claim your new kit whenever you want.</li>
+      <li>Access is <strong>permanent</strong> — it stays even after wipes.</li>
+    </ul>
+  </div>
+
+  <div class="footer">
+    Old Dad's 3.0 · Powered by Lineup<br>
+    Questions? Contact the server staff.
+  </div>
+</main>
+
+<script>
+  // Grab SteamID from URL
+  const params = new URLSearchParams(window.location.search);
+  const steamId = params.get('steamid');
+
+  const badge = document.getElementById('statusBadge');
+  const buttons = document.querySelectorAll('.buy-btn');
+
+  if (steamId && /^\d{17}$/.test(steamId)) {
+    badge.className = 'linked-badge';
+    badge.innerHTML = `Linked to SteamID <code>${steamId}</code>`;
+    // Enable buttons once Stripe is ready
+    // buttons.forEach(btn => { btn.disabled = false; btn.textContent = 'Buy Now'; });
+  } else {
+    badge.className = 'linked-badge not-linked';
+    badge.innerHTML = `No SteamID detected — open this page from the in-game <code>/buy</code> command`;
+  }
+
+  // Placeholder click handler (will be replaced with Stripe later)
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!steamId) {
+        alert('Please open this page using the /buy command in-game so we can link your Steam account.');
+        return;
+      }
+      alert(`Stripe checkout for ${btn.dataset.tier} ($${btn.dataset.price}) will go here.\nSteamID: ${steamId}`);
+    });
+  });
+</script>
+</body>
+</html>

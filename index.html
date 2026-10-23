@@ -298,7 +298,7 @@
   .ci-confirm:hover{filter:brightness(1.06)}
 
   /* ---------- Layout ---------- */
-  .wrap{max-width:1380px; margin:0 auto; padding:26px}
+  .wrap{max-width:1280px; margin:0 auto; padding:26px}
   .hero{margin-bottom:22px}
   .hero h1{font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:30px; letter-spacing:-.025em; line-height:1.1}
   .hero h1 em{font-style:normal; color:var(--accent)}
@@ -327,21 +327,15 @@
     border-radius:9px; padding:7px 11px; font-family:inherit; font-size:13px; outline:none; cursor:pointer;
   }
 
-  .main{display:grid; grid-template-columns:200px minmax(0,1fr) 312px; gap:20px; align-items:start}
+  .main{display:grid; grid-template-columns:minmax(0,1fr) 312px; gap:24px; align-items:start}
   .feed{min-width:0}
-  .ad-rail{display:flex; flex-direction:column; gap:14px; position:sticky; top:84px}
-  .ad-rail .panel{padding:12px}
   .browse-bar{display:none; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:8px 8px 8px 14px; margin-bottom:16px; color:var(--dim)}
   .browse-bar input{flex:1; background:none; border:none; outline:none; color:var(--text); font-size:14px; min-width:0}
   .browse-bar input::placeholder{color:var(--faint)}
   .browse-bar button{background:var(--accent); color:#fff; font-weight:600; font-size:13.5px; padding:9px 15px; border-radius:9px; white-space:nowrap; transition:filter .12s}
   .browse-bar button:hover{filter:brightness(1.07)}
   .browse-bar button:disabled{opacity:.6; cursor:default}
-  @media(max-width:1100px){
-    .main{grid-template-columns:minmax(0,1fr) 312px}
-    .ad-rail{display:none}
-  }
-  @media(max-width:980px){ .main{grid-template-columns:1fr} .rail{position:static; top:auto; order:1} .feed{order:0} .ad-rail{display:none} }
+  @media(max-width:980px){ .main{grid-template-columns:1fr} .rail{position:static; top:auto; order:1} .feed{order:0} }
 
   /* ---------- Grid ---------- */
   .countline{font-size:13px; color:var(--faint); font-family:'JetBrains Mono',monospace}
@@ -982,13 +976,6 @@
   <div class="chiprow" id="catChips" style="margin-bottom:20px"></div>
 
   <div class="main">
-    <aside class="ad-rail" id="adRail">
-      <div class="panel" id="sidebarAdPanel" style="display:none">
-        <div style="font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); margin-bottom:8px">Sponsored</div>
-        <div id="sidebarAdBody"></div>
-      </div>
-    </aside>
-
     <div class="feed">
       <div class="browse-bar" id="browseBar">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
@@ -1010,6 +997,11 @@
     </div>
 
     <aside class="rail">
+      <div class="panel" id="sidebarAdPanel" style="display:none; padding:12px">
+        <div style="font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); margin-bottom:8px">Sponsored</div>
+        <div id="sidebarAdBody"></div>
+      </div>
+
       <div class="panel">
         <h3>Your week</h3>
         <div class="you">
@@ -2942,11 +2934,8 @@ async function renderSidebarAds(){
   if(!panel || !body) return;
 
   const ads = await loadActiveAds();
-  // Sidebar package + free image ads can show here; prefer explicit banner kind
-  const banners = ads.filter(a =>
-    a.kind === 'banner' ||
-    (a.kind === 'free' && a.file_name && /\.(png|jpe?g|webp|gif)$/i.test(a.file_name))
-  );
+  // Sidebar only shows paid banner package — free ads are pre-roll only
+  const banners = ads.filter(a => a.kind === 'banner');
 
   if(!banners.length){
     panel.style.display = 'none';
@@ -2954,7 +2943,7 @@ async function renderSidebarAds(){
     return;
   }
 
-  // Rotate: show up to 2
+  // Show up to 2 banner ads
   const show = banners.slice(0, 2);
   const parts = [];
   for(const ad of show){

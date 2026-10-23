@@ -2207,6 +2207,7 @@ const ACHIEVEMENTS = [
   { id:'train',    icon:'🚂', name:'All aboard',      desc:'Join the raid train',           check:s=>!!s.in_train },
   { id:'ref1',     icon:'🤝', name:'Recruiter',       desc:'Refer a friend to Lineup',      check:s=>(s.referrals||0)>=1 },
   { id:'ref5',     icon:'📣', name:'Community builder',desc:'Refer 5 friends',              check:s=>(s.referrals||0)>=5 },
+  { id:'advertiser', icon:'📢', name:'Advertiser',    desc:'Create an ad on Lineup',        check:s=>(s.ads_created||0)>=1 },
 ];
 async function openAchievements(){
   const modal = document.getElementById('achieveModal');
@@ -2217,6 +2218,11 @@ async function openAchievements(){
   modal.style.display = 'flex'; lockScroll(true);
   let s = {};
   try{ const { data } = await sb.rpc('my_stats'); s = data || {}; }catch(e){}
+  // Also check if the user has ever submitted an ad
+  try{
+    const { count } = await sb.from('ads').select('id', { count: 'exact', head: true }).eq('user_id', (await sb.auth.getUser()).data.user?.id);
+    s.ads_created = count || 0;
+  }catch(e){ s.ads_created = 0; }
   const unlocked = ACHIEVEMENTS.filter(a => a.check(s));
   if(cnt) cnt.textContent = unlocked.length + ' / ' + ACHIEVEMENTS.length;
   try{ localStorage.setItem('lineup_ach_seen', JSON.stringify(unlocked.map(a => a.id))); }catch(e){}
@@ -2528,6 +2534,14 @@ async function checkNewAchievements(force){
   _achCheckAt = now;
   let s = {};
   try{ const { data } = await sb.rpc('my_stats'); s = data || {}; }catch(e){ return; }
+  // Check ads created for the new Advertiser achievement
+  try{
+    const { data: { user } } = await sb.auth.getUser();
+    if(user){
+      const { count } = await sb.from('ads').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
+      s.ads_created = count || 0;
+    }
+  }catch(e){ s.ads_created = 0; }
   const unlocked = ACHIEVEMENTS.filter(a => a.check(s)).map(a => a.id);
   let seen = [];
   const hadSeen = !!localStorage.getItem('lineup_ach_seen');

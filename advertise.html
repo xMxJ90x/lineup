@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advertise on Lineup — Reach small streamers & real viewers</title>
+<meta name="description" content="Put your brand, stream, Discord or product in front of people who actually show up for small creators. Use points for free ads or pay for premium placements.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://xmxj90x.github.io/lineup/advertise.html">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Lineup">
+<meta property="og:title" content="Advertise on Lineup">
+<meta property="og:description" content="Reach people who show up for small streamers. Free points ads + paid placements.">
+<meta property="og:url" content="https://xmxj90x.github.io/lineup/advertise.html">
+<meta property="og:image" content="https://xmxj90x.github.io/lineup/og-image.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  :root{
+    --bg:#121317; --surface:#1A1C22; --surface-2:#21242C; --surface-3:#282C36;
+    --border:#2B2F3A; --border-2:#383D4A;
+    --text:#EDEEF2; --dim:#9396A3; --faint:#5E6270;
+    --accent:#FF5C39; --accent-ink:#3A1408;
+    --good:#3DDC97; --live:#FF3B5C;
+    --r:14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:'Inter',system-ui,sans-serif; font-size:15px; line-height:1.5;
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  ::selection{background:var(--accent); color:#fff}
+  a{color:inherit; text-decoration:none}
+  button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit}
+  input, textarea, select{font-family:inherit}
+
+  .topbar{
+    position:sticky; top:0; z-index:50;
+    display:flex; align-items:center; gap:18px;
+    padding:14px 26px; background:rgba(18,19,23,.92);
+    backdrop-filter:blur(12px); border-bottom:1px solid var(--border);
+  }
+  .brand{display:flex; align-items:center; gap:10px}
+  .brand-dot{
+    width:11px; height:11px; border-radius:50%; background:var(--live);
+    box-shadow:0 0 0 0 rgba(255,59,92,.6); animation:pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(255,59,92,.55)}
+    70%{box-shadow:0 0 0 9px rgba(255,59,92,0)}
+    100%{box-shadow:0 0 0 0 rgba(255,59,92,0)}
+  }
+  .brand-name{font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:21px; letter-spacing:-.02em}
+  .brand-name span{color:var(--accent)}
+  .topbar-right{margin-left:auto; display:flex; align-items:center; gap:12px}
+  .points-pill{
+    display:flex; align-items:center; gap:7px; background:var(--surface-2);
+    border:1px solid var(--border); border-radius:999px; padding:7px 13px;
+    font-size:13px; color:var(--dim);
+  }
+  .points-pill b{font-family:'JetBrains Mono',monospace; color:var(--good); font-weight:700}
+  .back-link{
+    font-size:13.5px; color:var(--dim); font-weight:500;
+    padding:8px 14px; border-radius:9px; border:1px solid var(--border);
+    transition:border-color .12s, color .12s;
+  }
+  .back-link:hover{border-color:var(--border-2); color:var(--text)}
+
+  .wrap{max-width:980px; margin:0 auto; padding:36px 22px 90px}
+
+  .hero{text-align:center; margin-bottom:40px}
+  .hero .eyebrow{
+    display:inline-block; font-size:12.5px; font-weight:600; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--accent); margin-bottom:12px;
+  }
+  .hero h1{
+    font-family:'Bricolage Grotesque',sans-serif; font-weight:800;
+    font-size:clamp(28px,5vw,38px); letter-spacing:-.03em; margin-bottom:12px; line-height:1.15;
+  }
+  .hero p{color:var(--dim); font-size:16px; max-width:520px; margin:0 auto; line-height:1.55}
+
+  .packages{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+    gap:16px; margin-bottom:42px;
+  }
+  .pkg{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:20px 18px 18px;
+    display:flex; flex-direction:column; position:relative;
+    transition:border-color .15s, transform .15s; cursor:pointer;
+  }
+  .pkg:hover{border-color:var(--border-2); transform:translateY(-2px)}
+  .pkg.selected{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent)}
+  .pkg.featured{
+    border-color:rgba(255,92,57,.45);
+    background:linear-gradient(165deg, rgba(255,92,57,.08), var(--surface) 55%);
+  }
+  .pkg.free{
+    border-color:rgba(61,220,151,.35);
+    background:linear-gradient(165deg, rgba(61,220,151,.07), var(--surface) 55%);
+  }
+  .pkg-badge{
+    position:absolute; top:12px; right:12px;
+    font-size:10px; font-weight:700; letter-spacing:.04em;
+    padding:3px 8px; border-radius:6px;
+  }
+  .pkg.featured .pkg-badge{background:var(--accent); color:#fff}
+  .pkg.free .pkg-badge{background:var(--good); color:#04130C}
+
+  .pkg-icon{font-size:24px; margin-bottom:10px}
+  .pkg h3{
+    font-family:'Bricolage Grotesque',sans-serif; font-weight:700;
+    font-size:17px; margin-bottom:4px; letter-spacing:-.01em;
+  }
+  .pkg .price{
+    font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700;
+    margin-bottom:8px;
+  }
+  .pkg .price span{font-size:13px; color:var(--dim); font-weight:500}
+  .pkg .desc{color:var(--dim); font-size:13px; line-height:1.45; flex:1; margin-bottom:12px}
+  .pkg ul{list-style:none}
+  .pkg ul li{
+    font-size:12.5px; color:var(--text); padding:3px 0;
+    display:flex; align-items:flex-start; gap:7px;
+  }
+  .pkg ul li::before{content:"✓"; color:var(--good); font-weight:700; flex-shrink:0}
+
+  .form-card{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:16px; padding:28px 24px; margin-bottom:32px;
+    display:none;
+  }
+  .form-card.show{display:block}
+  .form-card h2{
+    font-family:'Bricolage Grotesque',sans-serif; font-weight:700;
+    font-size:20px; margin-bottom:6px;
+  }
+  .form-sub{color:var(--dim); font-size:13.5px; margin-bottom:22px}
+
+  .field{margin-bottom:16px}
+  .field label{
+    display:block; font-size:13px; font-weight:600; color:var(--dim);
+    margin-bottom:6px;
+  }
+  .field input{
+    width:100%; background:var(--surface-2); border:1px solid var(--border);
+    border-radius:10px; padding:11px 13px; color:var(--text); font-size:14px;
+    outline:none; transition:border-color .12s;
+  }
+  .field input:focus{border-color:var(--border-2)}
+  .field .hint{font-size:12px; color:var(--faint); margin-top:5px}
+
+  .file-zone{
+    border:1.5px dashed var(--border-2); border-radius:12px;
+    padding:22px; text-align:center; background:var(--surface-2);
+    cursor:pointer; transition:border-color .12s, background .12s;
+  }
+  .file-zone:hover, .file-zone.drag{border-color:var(--accent); background:rgba(255,92,57,.06)}
+  .file-zone input{display:none}
+  .file-zone .fz-icon{font-size:28px; margin-bottom:8px}
+  .file-zone .fz-text{font-size:14px; font-weight:600; margin-bottom:4px}
+  .file-zone .fz-sub{font-size:12.5px; color:var(--dim)}
+  .file-preview{
+    display:none; margin-top:12px; align-items:center; gap:12px;
+    background:var(--surface-3); border-radius:10px; padding:10px 12px;
+  }
+  .file-preview.show{display:flex}
+  .file-preview img{
+    width:64px; height:40px; object-fit:cover; border-radius:6px; background:#000;
+  }
+  .file-preview .fp-name{flex:1; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .file-preview .fp-size{font-size:12px; color:var(--faint); font-family:'JetBrains Mono',monospace}
+  .file-preview .fp-x{
+    width:28px; height:28px; border-radius:8px; background:var(--surface-2);
+    display:flex; align-items:center; justify-content:center; color:var(--dim); font-size:14px;
+  }
+  .file-preview .fp-x:hover{color:var(--accent)}
+
+  .form-actions{display:flex; gap:12px; margin-top:22px; flex-wrap:wrap}
+  .btn-primary{
+    background:var(--accent); color:#fff; font-weight:700; font-size:14.5px;
+    padding:12px 22px; border-radius:11px; transition:filter .12s;
+  }
+  .btn-primary:hover{filter:brightness(1.07)}
+  .btn-primary:disabled{opacity:.5; cursor:not-allowed; filter:none}
+  .btn-ghost{
+    background:var(--surface-2); border:1px solid var(--border);
+    color:var(--text); font-weight:600; font-size:14px;
+    padding:12px 18px; border-radius:11px;
+  }
+  .btn-ghost:hover{border-color:var(--border-2)}
+
+  .status{
+    display:none; margin-top:16px; padding:12px 14px; border-radius:10px;
+    font-size:13.5px; font-weight:500;
+  }
+  .status.show{display:block}
+  .status.ok{background:rgba(61,220,151,.12); border:1px solid rgba(61,220,151,.3); color:var(--good)}
+  .status.err{background:rgba(255,59,92,.1); border:1px solid rgba(255,59,92,.25); color:#FF8A9A}
+  .status.info{background:rgba(255,92,57,.1); border:1px solid rgba(255,92,57,.25); color:#FFB39E}
+
+  .login-gate{
+    text-align:center; background:var(--surface); border:1px solid var(--border);
+    border-radius:16px; padding:40px 24px; margin-bottom:32px;
+  }
+  .login-gate h2{font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:22px; margin-bottom:10px}
+  .login-gate p{color:var(--dim); margin-bottom:20px; max-width:380px; margin-left:auto; margin-right:auto}
+  .login-gate a{
+    display:inline-flex; align-items:center; gap:8px;
+    background:#A56BFF; color:#fff; font-weight:700; font-size:14.5px;
+    padding:12px 20px; border-radius:11px;
+  }
+
+  .rules{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:20px 22px; font-size:13px; color:var(--dim); line-height:1.55;
+  }
+  .rules h3{font-size:14px; font-weight:700; color:var(--text); margin-bottom:8px}
+  .rules ul{margin-left:18px; margin-top:6px}
+  .rules li{margin-bottom:4px}
+
+  @media(max-width:600px){
+    .packages{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="index.html" class="brand">
+    <span class="brand-dot"></span>
+    <span class="brand-name">Line<span>up</span></span>
+  </a>
+  <div class="topbar-right">
+    <div class="points-pill" id="pointsPill" style="display:none">
+      <span>Your points</span> <b id="pointsVal">0</b>
+    </div>
+    <a href="index.html" class="back-link">← Back to Lineup</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Advertise</div>
+    <h1>Put your ad in front of real viewers</h1>
+    <p>Use Lineup points for a free 3-day ad, or pay for higher visibility placements. All ads are reviewed before going live.</p>
+  </div>
+
+  <div class="login-gate" id="loginGate">
+    <h2>Sign in to create an ad</h2>
+    <p>You need a Lineup account so we can track points (for free ads) and know who submitted the creative.</p>
+    <a href="index.html">Go to Lineup & connect →</a>
+  </div>
+
+  <div id="mainContent" style="display:none">
+
+    <div class="packages" id="pkgGrid">
+      <div class="pkg free" data-pkg="free" onclick="selectPackage('free')">
+        <span class="pkg-badge">POINTS</span>
+        <div class="pkg-icon">🎁</div>
+        <h3>Free Ad</h3>
+        <div class="price">150 <span>points</span></div>
+        <p class="desc">Runs for 3 days. One free ad per day max.</p>
+        <ul>
+          <li>Image or short video</li>
+          <li>Your link</li>
+          <li>3-day duration</li>
+          <li>1 per day limit</li>
+        </ul>
+      </div>
+
+      <div class="pkg" data-pkg="banner" onclick="selectPackage('banner')">
+        <div class="pkg-icon">🪧</div>
+        <h3>Sidebar Banner</h3>
+        <div class="price">$25 <span>/ week</span></div>
+        <p class="desc">Persistent banner while people browse the lineup.</p>
+        <ul>
+          <li>Image + link</li>
+          <li>7-day run</li>
+          <li>Good for awareness</li>
+        </ul>
+      </div>
+
+      <div class="pkg" data-pkg="preroll" onclick="selectPackage('preroll')">
+        <div class="pkg-icon">📺</div>
+        <h3>Pre-roll Video</h3>
+        <div class="price">$35 <span>/ week</span></div>
+        <p class="desc">Plays before someone clicks Watch + support. Skippable after 5s.</p>
+        <ul>
+          <li>15–30 second video</li>
+          <li>High attention</li>
+          <li>7-day run</li>
+        </ul>
+      </div>
+
+      <div class="pkg featured" data-pkg="featured" onclick="selectPackage('featured')">
+        <span class="pkg-badge">POPULAR</span>
+        <div class="pkg-icon">⭐</div>
+        <h3>Featured Card</h3>
+        <div class="price">$49 <span>/ week</span></div>
+        <p class="desc">Top placement on the live grid with Sponsored tag.</p>
+        <ul>
+          <li>Highest visibility</li>
+          <li>Custom card</li>
+          <li>7-day run</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="form-card" id="adForm">
+      <h2 id="formTitle">Create your ad</h2>
+      <p class="form-sub" id="formSub">Fill in the details and upload your creative.</p>
+
+      <div class="field">
+        <label>Ad title</label>
+        <input type="text" id="adTitle" maxlength="60" placeholder="e.g. Join my Discord / New merch drop">
+      </div>
+
+      <div class="field">
+        <label>Destination link</label>
+        <input type="url" id="adLink" placeholder="https://twitch.tv/yourname or https://discord.gg/...">
+        <div class="hint">Where people go when they click your ad</div>
+      </div>
+
+      <div class="field">
+        <label>Creative file</label>
+        <div class="file-zone" id="fileZone" onclick="document.getElementById('adFile').click()">
+          <input type="file" id="adFile" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm">
+          <div class="fz-icon">📁</div>
+          <div class="fz-text">Click or drop file here</div>
+          <div class="fz-sub" id="fileHint">PNG, JPG, WEBP, GIF or MP4/WEBM · max 15 MB</div>
+        </div>
+        <div class="file-preview" id="filePreview">
+          <img id="fpThumb" alt="">
+          <div style="flex:1; min-width:0">
+            <div class="fp-name" id="fpName"></div>
+            <div class="fp-size" id="fpSize"></div>
+          </div>
+          <button class="fp-x" type="button" onclick="clearFile()">✕</button>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-primary" id="submitBtn" onclick="submitAd()">Submit ad</button>
+        <button class="btn-ghost" onclick="cancelForm()">Cancel</button>
+      </div>
+
+      <div class="status" id="statusMsg"></div>
+    </div>
+
+    <div class="rules">
+      <h3>Ad rules</h3>
+      <ul>
+        <li>Free ads cost <b>150 points</b> and last <b>3 days</b>. You can only submit one free ad per day.</li>
+        <li>All ads are manually reviewed. Adult, gambling, crypto-spam, or scam content will be rejected.</li>
+        <li>Paid ads start after payment + approval (usually within 24 hours).</li>
+        <li>We may pause or remove ads that break the rules or get heavy negative feedback.</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Same Supabase project as the main site
+const SUPABASE_URL = 'https://pxitnueanibluylurfif.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4aXRudWVhbmlibHV5bHVyZmlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NTk3OTEsImV4cCI6MjA5ODAzNTc5MX0.M_fzzLm7nFACelBHM_BD1KXGa5yj9JAVECM3VNLSwng';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const FREE_COST = 150;
+const FREE_DAYS = 3;
+
+let me = null;
+let points = 0;
+let selectedPkg = null;
+let selectedFile = null;
+
+const PKG_INFO = {
+  free: {
+    title: 'Free Ad (150 points)',
+    sub: 'Uses your Lineup points. Runs for 3 days. One free ad per calendar day.',
+    accept: 'image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm',
+    hint: 'PNG, JPG, WEBP, GIF or short MP4/WEBM · max 15 MB',
+    kind: 'free'
+  },
+  banner: {
+    title: 'Sidebar Banner – $25/week',
+    sub: 'Image that stays visible while people browse. Payment via Stripe after review.',
+    accept: 'image/png,image/jpeg,image/webp,image/gif',
+    hint: 'PNG, JPG, WEBP or GIF · recommended 300×250 · max 8 MB',
+    kind: 'banner'
+  },
+  preroll: {
+    title: 'Pre-roll Video – $35/week',
+    sub: '15–30 second video that plays before Watch + support. Skippable after 5 seconds.',
+    accept: 'video/mp4,video/webm',
+    hint: 'MP4 or WEBM · 15–30 seconds recommended · max 15 MB',
+    kind: 'preroll'
+  },
+  featured: {
+    title: 'Featured Card – $49/week',
+    sub: 'Top placement on the live grid with a Sponsored tag. Highest visibility.',
+    accept: 'image/png,image/jpeg,image/webp,image/gif',
+    hint: 'PNG, JPG, WEBP or GIF · max 8 MB',
+    kind: 'featured'
+  }
+};
+
+async function init(){
+  try{
+    const { data: { session } } = await sb.auth.getSession();
+    if(!session || !session.user){
+      document.getElementById('loginGate').style.display = 'block';
+      document.getElementById('mainContent').style.display = 'none';
+      return;
+    }
+
+    me = session.user;
+
+    // Load points from profiles table (same source the main site uses)
+    const { data: prof } = await sb.from('profiles').select('points, username, display_name').eq('id', me.id).maybeSingle();
+    points = (prof && prof.points) || 0;
+
+    document.getElementById('loginGate').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+    document.getElementById('pointsPill').style.display = 'flex';
+    document.getElementById('pointsVal').textContent = points;
+  }catch(e){
+    console.error(e);
+    document.getElementById('loginGate').style.display = 'block';
+    document.getElementById('mainContent').style.display = 'none';
+  }
+}
+
+function selectPackage(key){
+  selectedPkg = key;
+  document.querySelectorAll('.pkg').forEach(el => {
+    el.classList.toggle('selected', el.dataset.pkg === key);
+  });
+
+  const info = PKG_INFO[key];
+  document.getElementById('formTitle').textContent = info.title;
+  document.getElementById('formSub').textContent = info.sub;
+  document.getElementById('adFile').accept = info.accept;
+  document.getElementById('fileHint').textContent = info.hint;
+
+  document.getElementById('adForm').classList.add('show');
+  document.getElementById('statusMsg').className = 'status';
+  document.getElementById('statusMsg').textContent = '';
+  document.getElementById('adForm').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function cancelForm(){
+  selectedPkg = null;
+  document.querySelectorAll('.pkg').forEach(el => el.classList.remove('selected'));
+  document.getElementById('adForm').classList.remove('show');
+  clearFile();
+  document.getElementById('adTitle').value = '';
+  document.getElementById('adLink').value = '';
+}
+
+const fileInput = document.getElementById('adFile');
+const fileZone = document.getElementById('fileZone');
+
+fileInput.addEventListener('change', e => {
+  if(e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+});
+fileZone.addEventListener('dragover', e => { e.preventDefault(); fileZone.classList.add('drag'); });
+fileZone.addEventListener('dragleave', () => fileZone.classList.remove('drag'));
+fileZone.addEventListener('drop', e => {
+  e.preventDefault();
+  fileZone.classList.remove('drag');
+  if(e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(file){
+  if(file.size > 15 * 1024 * 1024){
+    showStatus('err', 'File is too large (max 15 MB).');
+    return;
+  }
+  selectedFile = file;
+  const preview = document.getElementById('filePreview');
+  const thumb = document.getElementById('fpThumb');
+  document.getElementById('fpName').textContent = file.name;
+  document.getElementById('fpSize').textContent = (file.size/1024).toFixed(0) + ' KB';
+
+  if(file.type.startsWith('image/')){
+    thumb.src = URL.createObjectURL(file);
+    thumb.style.display = 'block';
+  } else {
+    thumb.style.display = 'none';
+  }
+  preview.classList.add('show');
+}
+
+function clearFile(){
+  selectedFile = null;
+  fileInput.value = '';
+  document.getElementById('filePreview').classList.remove('show');
+  document.getElementById('fpThumb').src = '';
+}
+
+function showStatus(type, msg){
+  const el = document.getElementById('statusMsg');
+  el.className = 'status show ' + type;
+  el.textContent = msg;
+}
+
+async function submitAd(){
+  if(!me){
+    showStatus('err', 'You need to be signed in.');
+    return;
+  }
+  if(!selectedPkg){
+    showStatus('err', 'Pick a package first.');
+    return;
+  }
+
+  const title = document.getElementById('adTitle').value.trim();
+  const link  = document.getElementById('adLink').value.trim();
+  const info  = PKG_INFO[selectedPkg];
+
+  if(!title || title.length < 3){
+    showStatus('err', 'Please enter a title (at least 3 characters).');
+    return;
+  }
+  if(!link || !/^https?:\/\//i.test(link)){
+    showStatus('err', 'Please enter a valid link starting with https://');
+    return;
+  }
+  if(!selectedFile){
+    showStatus('err', 'Please upload an image or video.');
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Uploading…';
+  showStatus('info', 'Uploading your file…');
+
+  try{
+    // 1. Create the ad row + deduct points (free) via RPC
+    //    You need to create this function in Supabase (SQL is below)
+    const { data: adRow, error: rpcErr } = await sb.rpc('submit_ad', {
+      p_kind: info.kind,
+      p_title: title,
+      p_link: link,
+      p_file_name: selectedFile.name,
+      p_file_size: selectedFile.size
+    });
+
+    if(rpcErr){
+      const msg = (rpcErr.message || '').toLowerCase();
+      if(msg.includes('not enough points') || msg.includes('points')){
+        showStatus('err', 'You need at least 150 points for a free ad.');
+      } else if(msg.includes('already used') || msg.includes('daily') || msg.includes('once per day')){
+        showStatus('err', 'You already used your free ad today. Come back tomorrow.');
+      } else if(msg.includes('function') && msg.includes('does not exist')){
+        showStatus('err', 'Backend not ready yet — create the submit_ad function in Supabase (see instructions).');
+      } else {
+        showStatus('err', rpcErr.message || 'Could not create the ad. Try again.');
+      }
+      btn.disabled = false; btn.textContent = 'Submit ad';
+      return;
+    }
+
+    if(!adRow || !adRow.ok || !adRow.id){
+      showStatus('err', (adRow && adRow.error) || 'Could not create the ad.');
+      btn.disabled = false; btn.textContent = 'Submit ad';
+      return;
+    }
+
+    const adId = adRow.id;
+
+    // 2. Upload the actual file to Supabase Storage
+    //    Bucket: "ad-files"  (create it in Supabase Storage, public or signed)
+    const ext = (selectedFile.name.split('.').pop() || 'bin').toLowerCase();
+    const path = `${me.id}/${adId}/${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
+
+    const { error: upErr } = await sb.storage.from('ad-files').upload(path, selectedFile, {
+      upsert: false,
+      contentType: selectedFile.type || undefined
+    });
+
+    if(upErr){
+      // Clean up the row if upload fails
+      try{ await sb.rpc('delete_ad', { p_id: adId }); }catch(e){}
+      showStatus('err', 'Upload failed: ' + (upErr.message || 'try again'));
+      btn.disabled = false; btn.textContent = 'Submit ad';
+      return;
+    }
+
+    // 3. Attach the path to the ad row
+    const { error: attachErr } = await sb.rpc('attach_ad_file', {
+      p_id: adId,
+      p_path: path
+    });
+
+    if(attachErr){
+      showStatus('err', 'File uploaded but could not be linked. Contact support with ad id: ' + adId);
+      btn.disabled = false; btn.textContent = 'Submit ad';
+      return;
+    }
+
+    // Success
+    if(info.kind === 'free'){
+      // Refresh points display
+      const { data: prof } = await sb.from('profiles').select('points').eq('id', me.id).maybeSingle();
+      points = (prof && prof.points) || Math.max(0, points - FREE_COST);
+      document.getElementById('pointsVal').textContent = points;
+
+      showStatus('ok', 'Free ad submitted! 150 points deducted. It will be reviewed and (if approved) run for 3 days.');
+    } else {
+      showStatus('ok', 'Ad uploaded successfully. It is now pending review + payment. We will enable Stripe checkout next.');
+    }
+
+    clearFile();
+    document.getElementById('adTitle').value = '';
+    document.getElementById('adLink').value = '';
+
+  }catch(e){
+    console.error(e);
+    showStatus('err', e.message || 'Something went wrong. Please try again.');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Submit ad';
+}
+
+init();
+</script>
+
+</body>
+</html>

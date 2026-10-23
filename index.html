@@ -997,6 +997,11 @@
     </div>
 
     <aside class="rail">
+      <div class="panel" id="sidebarAdPanel" style="display:none; padding:12px">
+        <div style="font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); margin-bottom:8px">Sponsored</div>
+        <div id="sidebarAdBody"></div>
+      </div>
+
       <div class="panel">
         <h3>Your week</h3>
         <div class="you">
@@ -2439,6 +2444,7 @@ function closeDownloadModal(){ document.getElementById('downloadModal').style.di
 
 // ---- my purchases ----
 let _myPurchases = [];
+let _myAdPurchases = [];
 async function openPurchases(){
   if(!me){ showBanner('info', 'Sign in to see your purchases.'); return; }
   document.getElementById('purchasesModal').style.display = 'flex';
@@ -2447,16 +2453,62 @@ async function openPurchases(){
   list.innerHTML = '<p class="rail-note">Loading…</p>';
   try{
     const { data, error } = await sb.functions.invoke('stripe-checkout', { body: { action:'my-purchases' } });
-    if(error || !data){ list.innerHTML = '<p class="rail-note">Couldn\'t load your purchases — try again.</p>'; return; }
-    _myPurchases = data.purchases || [];
-    renderPurchasesList(false);
-  }catch(e){ list.innerHTML = '<p class="rail-note">Couldn\'t load your purchases — try again.</p>'; }
+    _myPurchases = (!error && data && data.purchases) ? data.purchases : [];
+  }catch(e){ _myPurchases = []; }
+
+  // Paid ad packages this user bought
+  try{
+    const { data: { user } } = await sb.auth.getUser();
+    if(user){
+      const { data: ads } = await sb.from('ads')
+        .select('id, kind, title, link, status, created_at, starts_at, ends_at')
+        .eq('user_id', user.id)
+        .neq('kind', 'free')
+        .neq('status', 'awaiting_payment')
+        .order('created_at', { ascending: false });
+      _myAdPurchases = ads || [];
+    } else { _myAdPurchases = []; }
+  }catch(e){ _myAdPurchases = []; }
+
+  renderPurchasesList(false);
 }
 function renderPurchasesList(showHidden){
   const list = document.getElementById('purchasesList');
   const visible = _myPurchases.filter(p => !p.buyer_hidden);
   const hidden = _myPurchases.filter(p => p.buyer_hidden);
-  if(!_myPurchases.length){ list.innerHTML = '<p class="rail-note">Nothing purchased yet.</p>'; return; }
+  const AD_LABELS = { banner:'Sidebar Banner', preroll:'Pre-roll Video', featured:'Featured Card' };
+  const AD_PRICES = { banner:25, preroll:35, featured:49 };
+
+  let html = '';
+
+  if(_myAdPurchases.length){
+    html += `<div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--faint); margin-bottom:8px">Ad packages</div>`;
+    html += _myAdPurchases.map(a => {
+      const label = AD_LABELS[a.kind] || a.kind;
+      const price = AD_PRICES[a.kind] != null ? '$' + AD_PRICES[a.kind] : '';
+      const statusColor = a.status === 'active' ? 'var(--good)' : a.status === 'pending_review' ? 'var(--accent)' : 'var(--dim)';
+      const statusText = a.status === 'active' ? 'Live' : a.status === 'pending_review' ? 'Pending review' : a.status === 'rejected' ? 'Rejected' : a.status === 'expired' ? 'Expired' : a.status;
+      const ends = a.ends_at ? ' · until ' + new Date(a.ends_at).toLocaleDateString() : '';
+      return `<div class="purchase-row">
+        <div>
+          <div class="purchase-t">📢 ${esc(label)}${a.title ? ' — ' + esc(a.title) : ''}</div>
+          <div class="purchase-d">${price} · ${timeAgo(new Date(a.created_at).getTime())} · <span style="color:${statusColor}">${statusText}</span>${ends}</div>
+        </div>
+        ${a.link ? `<a class="asset-buy" href="${esc(a.link)}" target="_blank" rel="noopener">Open link</a>` : ''}
+      </div>`;
+    }).join('');
+    html += `<div style="height:14px"></div>`;
+  }
+
+  if(_myPurchases.length){
+    html += `<div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--faint); margin-bottom:8px">Assets</div>`;
+  }
+
+  if(!_myPurchases.length && !_myAdPurchases.length){
+    list.innerHTML = '<p class="rail-note">Nothing purchased yet.</p>';
+    return;
+  }
+
   const row = (p, isHidden) => `<div class="purchase-row">
       <div><div class="purchase-t">${esc(p.asset_title_snapshot||'Asset')}</div><div class="purchase-d">$${(p.price_cents/100).toFixed(2)} · ${timeAgo(new Date(p.created_at).getTime())}</div></div>
       <div style="display:flex; gap:6px">
@@ -2465,7 +2517,10 @@ function renderPurchasesList(showHidden){
         <button class="purchase-hide" onclick="hidePurchase('${p.id}', ${!isHidden})" title="${isHidden ? 'Unhide' : 'Hide from this list'}">${isHidden ? '↺' : '✕'}</button>
       </div>
     </div>`;
-  let html = visible.length ? visible.map(p => row(p, false)).join('') : '<p class="rail-note">Nothing to show — check hidden purchases below.</p>';
+
+  if(visible.length) html += visible.map(p => row(p, false)).join('');
+  else if(_myPurchases.length) html += '<p class="rail-note">No visible asset purchases — check hidden below.</p>';
+
   if(hidden.length){
     if(showHidden){
       html += `<div class="purchase-hidden-lbl">Hidden (${hidden.length}) <button class="purchase-toggle" onclick="renderPurchasesList(false)">hide</button></div>` + hidden.map(p => row(p, true)).join('');
@@ -2828,6 +2883,9 @@ function render(){
       </div>
     </article>`;
   }).join('');
+
+  // Refresh sidebar banner ads (uses cache)
+  renderSidebarAds().catch(()=>{});
 }
 
 // ---- Skippable Pre-roll Ad (loads real active ads from Supabase) ----
@@ -2840,10 +2898,11 @@ async function loadActiveAds(){
   // cache for 2 minutes
   if(activeAdsCache && Date.now() - activeAdsLoadedAt < 120000) return activeAdsCache;
   try{
+    const now = new Date().toISOString();
     const { data, error } = await sb.from('ads')
-      .select('id, kind, title, link, file_path, file_name')
+      .select('id, kind, title, link, file_path, file_name, ends_at')
       .eq('status', 'active')
-      .gt('ends_at', new Date().toISOString())
+      .or(`ends_at.is.null,ends_at.gt.${now}`)
       .order('created_at', { ascending: false });
     if(error) throw error;
     activeAdsCache = data || [];
@@ -2858,9 +2917,54 @@ async function loadActiveAds(){
 async function getAdMediaUrl(path){
   if(!path) return null;
   try{
-    const { data } = await sb.storage.from('ad-files').createSignedUrl(path, 300);
-    return data && data.signedUrl ? data.signedUrl : null;
+    // Prefer signed URL (works when bucket is private)
+    const { data } = await sb.storage.from('ad-files').createSignedUrl(path, 600);
+    if(data && data.signedUrl) return data.signedUrl;
+  }catch(e){}
+  try{
+    // Fallback if bucket is public
+    const { data } = sb.storage.from('ad-files').getPublicUrl(path);
+    return data && data.publicUrl ? data.publicUrl : null;
   }catch(e){ return null; }
+}
+
+async function renderSidebarAds(){
+  const panel = document.getElementById('sidebarAdPanel');
+  const body = document.getElementById('sidebarAdBody');
+  if(!panel || !body) return;
+
+  const ads = await loadActiveAds();
+  // Sidebar package + free image ads can show here; prefer explicit banner kind
+  const banners = ads.filter(a =>
+    a.kind === 'banner' ||
+    (a.kind === 'free' && a.file_name && /\.(png|jpe?g|webp|gif)$/i.test(a.file_name))
+  );
+
+  if(!banners.length){
+    panel.style.display = 'none';
+    body.innerHTML = '';
+    return;
+  }
+
+  // Rotate: show up to 2
+  const show = banners.slice(0, 2);
+  const parts = [];
+  for(const ad of show){
+    const url = await getAdMediaUrl(ad.file_path);
+    if(!url) continue;
+    const href = ad.link || '#';
+    parts.push(`<a href="${esc(href)}" target="_blank" rel="noopener sponsored" style="display:block; margin-bottom:10px; text-decoration:none">
+      <img src="${esc(url)}" alt="${esc(ad.title||'Sponsored')}" style="width:100%; border-radius:10px; display:block; background:var(--surface-3)">
+      <div style="font-size:12px; font-weight:600; color:var(--text); margin-top:7px; line-height:1.3">${esc(ad.title||'Sponsored')}</div>
+    </a>`);
+  }
+
+  if(!parts.length){
+    panel.style.display = 'none';
+    return;
+  }
+  body.innerHTML = parts.join('');
+  panel.style.display = 'block';
 }
 
 async function showSkippableAd(onDone) {
@@ -3754,6 +3858,8 @@ async function adminApproveAd(id){
     if(!document.querySelector('#adminAdsList .admin-row')){
       document.getElementById('adminAdsList').innerHTML = '<div class="admin-empty">No pending ads right now.</div>';
     }
+    activeAdsCache = null; // force reload so sidebar/pre-roll picks it up
+    renderSidebarAds().catch(()=>{});
     toast('Ad approved and activated', '✓');
   }catch(e){ toast("Couldn't approve ad — try again", '✕'); }
 }

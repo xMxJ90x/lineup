@@ -2220,8 +2220,11 @@ async function openAchievements(){
   try{ const { data } = await sb.rpc('my_stats'); s = data || {}; }catch(e){}
   // Also check if the user has ever submitted an ad
   try{
-    const { count } = await sb.from('ads').select('id', { count: 'exact', head: true }).eq('user_id', (await sb.auth.getUser()).data.user?.id);
-    s.ads_created = count || 0;
+    const uid = (await sb.auth.getUser()).data.user?.id;
+    if(uid){
+      const { data: adCount } = await sb.rpc('user_ad_count', { p_user_id: uid });
+      s.ads_created = adCount || 0;
+    }
   }catch(e){ s.ads_created = 0; }
   const unlocked = ACHIEVEMENTS.filter(a => a.check(s));
   if(cnt) cnt.textContent = unlocked.length + ' / ' + ACHIEVEMENTS.length;
@@ -2538,8 +2541,8 @@ async function checkNewAchievements(force){
   try{
     const { data: { user } } = await sb.auth.getUser();
     if(user){
-      const { count } = await sb.from('ads').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
-      s.ads_created = count || 0;
+      const { data: adCount } = await sb.rpc('user_ad_count', { p_user_id: user.id });
+      s.ads_created = adCount || 0;
     }
   }catch(e){ s.ads_created = 0; }
   const unlocked = ACHIEVEMENTS.filter(a => a.check(s)).map(a => a.id);
@@ -3567,6 +3570,16 @@ async function loadProfile(handle){
   if(currentProfile){
     try{ const { data: st } = await sb.rpc('user_stats', { p_username: currentProfile.username || handle }); profileStats = st || {}; }
     catch(e){ profileStats = {}; }
+    // Count ads so the Advertiser achievement shows on profile pages
+    try{
+      const { data: adCount } = await sb.rpc('user_ad_count', { p_user_id: currentProfile.id });
+      profileStats.ads_created = adCount || 0;
+    }catch(e){
+      try{
+        const { count } = await sb.from('ads').select('id', { count: 'exact', head: true }).eq('user_id', currentProfile.id);
+        profileStats.ads_created = count || 0;
+      }catch(e2){ profileStats.ads_created = 0; }
+    }
     try{
       const { data: as } = await sb.from('profile_assets').select('id, title, price_cents, description, preview_url, asset_files(id)').eq('owner_id', currentProfile.id).order('sort_order', { ascending:true });
       profileAssets = as || [];

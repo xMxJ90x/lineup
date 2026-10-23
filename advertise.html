@@ -610,32 +610,82 @@ async function submitAd(){
       return;
     }
 
-    // Success
+    // Success paths
     if(info.kind === 'free'){
-      // Refresh points display
       const { data: prof } = await sb.from('profiles').select('points').eq('id', me.id).maybeSingle();
       points = (prof && prof.points) || Math.max(0, points - FREE_COST);
       document.getElementById('pointsVal').textContent = points;
 
       showStatus('ok', 'Free ad submitted! 150 points deducted. It will be reviewed and (if approved) run for 3 days.');
-    } else {
-      showStatus('ok', 'Ad uploaded successfully. It is now pending review + payment. We will enable Stripe checkout next.');
+      clearFile();
+      document.getElementById('adTitle').value = '';
+      document.getElementById('adLink').value = '';
+      btn.disabled = false;
+      btn.textContent = 'Submit ad';
+      return;
     }
 
-    clearFile();
-    document.getElementById('adTitle').value = '';
-    document.getElementById('adLink').value = '';
+    // Paid packages → Stripe Checkout
+    showStatus('info', 'File uploaded. Opening Stripe checkout…');
+    btn.textContent = 'Opening checkout…';
+
+    const { data: checkout, error: cErr } = await sb.functions.invoke('stripe-checkout', {
+      body: {
+        action: 'create-ad-checkout',
+        ad_id: adId,
+        kind: info.kind
+      }
+    });
+
+    if(cErr || !checkout || checkout.error || !checkout.url){
+      showStatus('err', (checkout && checkout.error) || "Couldn't start payment. Your ad was saved — contact support with id: " + adId);
+      btn.disabled = false;
+      btn.textContent = 'Submit ad';
+      return;
+    }
+
+    // Redirect to Stripe
+    location.href = checkout.url;
 
   }catch(e){
     console.error(e);
     showStatus('err', e.message || 'Something went wrong. Please try again.');
+    btn.disabled = false;
+    btn.textContent = 'Submit ad';
   }
-
-  btn.disabled = false;
-  btn.textContent = 'Submit ad';
 }
 
-init();
+// Handle return from Stripe (?ad_purchase=success|cancel&session_id=...)
+async function checkAdPurchaseReturn(){
+  const p = new URLSearchParams(location.search);
+  const flag = p.get('ad_purchase');
+  if(!flag) return;
+  const sessionId = p.get('session_id');
+  history.replaceState({}, '', location.pathname);
+
+  if(flag === 'cancel'){
+    showStatus('info', 'Checkout cancelled — no charge was made. You can submit again anytime.');
+    document.getElementById('adForm')?.classList.add('show');
+    return;
+  }
+  if(flag === 'success' && sessionId){
+    showStatus('info', 'Confirming your payment…');
+    try{
+      const { data, error } = await sb.functions.invoke('stripe-checkout', {
+        body: { action: 'verify-ad', session_id: sessionId }
+      });
+      if(error || !data || data.error || !data.ok){
+        showStatus('err', (data && data.error) || "Payment received but confirmation failed. Email support if the ad doesn't appear in review.");
+        return;
+      }
+      showStatus('ok', 'Payment successful! Your ad is now pending review and will go live after approval.');
+    }catch(e){
+      showStatus('err', "Couldn't confirm payment. Check your email for the Stripe receipt and contact support if needed.");
+    }
+  }
+}
+
+init().then(() => checkAdPurchaseReturn());
 </script>
 
 </body>

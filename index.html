@@ -1015,7 +1015,8 @@
         <button class="mypage-btn" id="achieveBtn" style="display:none" onclick="openAchievements()">🏆 My achievements</button>
         <button class="mypage-btn" id="shareBtn" style="display:none" onclick="openShareModal()">📣 Share my page</button>
         <button class="mypage-btn" id="purchasesBtn" style="display:none" onclick="openPurchases()">🧾 My purchases</button>
-        <button class="mypage-btn admin-open-btn" id="adminBtn" style="display:none" onclick="openAdmin()">⚑ Review reports</button>
+        <a class="mypage-btn" href="advertise.html" style="display:block; text-align:center; text-decoration:none">📣 Advertise on Lineup</a>
+        <button class="mypage-btn admin-open-btn" id="adminBtn" style="display:none" onclick="openAdmin()">⚑ Review reports & ads</button>
       </div>
 
       <div class="panel" id="boostPanel" style="display:none">
@@ -1302,6 +1303,8 @@
 <div class="modal-bg" id="adminModal" onclick="if(event.target===this)closeAdmin()">
   <div class="modal admin-modal">
     <div class="admin-head"><b>Moderation</b><button class="music-close" style="position:static" onclick="closeAdmin()" aria-label="Close">✕</button></div>
+    <div class="admin-sec-t">Pending ads</div>
+    <div id="adminAdsList" class="admin-list"></div>
     <div class="admin-sec-t">Reported pages</div>
     <div id="adminProfList" class="admin-list"></div>
     <div class="admin-sec-t">Reported posts</div>
@@ -3603,8 +3606,81 @@ async function openAdmin(){
   if(!isAdminUser()) return;
   document.getElementById('adminModal').style.display = 'flex';
   lockScroll(true);
+  await loadPendingAds();
   await loadReportedProfiles();
   await loadReported();
+}
+
+async function loadPendingAds(){
+  const list = document.getElementById('adminAdsList');
+  if(!list) return;
+  list.innerHTML = '<div class="admin-empty">Loading ads…</div>';
+  try{
+    const { data, error } = await sb.from('ads')
+      .select('id, kind, title, link, file_path, file_name, status, created_at, user_id')
+      .eq('status', 'pending_review')
+      .order('created_at', { ascending: false });
+    if(error) throw error;
+    if(!data || !data.length){
+      list.innerHTML = '<div class="admin-empty">No pending ads right now.</div>';
+      return;
+    }
+    list.innerHTML = data.map(a => {
+      const kindLabel = a.kind === 'free' ? 'Free (points)' : a.kind;
+      const fileLink = a.file_path
+        ? `<a href="#" onclick="previewAdFile('${esc(a.file_path)}');return false;" style="color:var(--accent);font-size:12.5px">View file</a>`
+        : '<span style="color:var(--faint);font-size:12.5px">No file</span>';
+      return `<div class="admin-row" id="adrow-${a.id}">
+        <div class="admin-meta">${esc(kindLabel)} · ${timeAgo(new Date(a.created_at).getTime())}</div>
+        <div class="admin-body"><b>${esc(a.title)}</b><br><a href="${esc(a.link)}" target="_blank" rel="noopener" style="color:var(--accent);font-size:13px">${esc(a.link)}</a></div>
+        <div class="admin-foot">
+          <span class="admin-flags">${fileLink}</span>
+          <span class="admin-acts">
+            <button class="admin-approve" onclick="adminApproveAd('${a.id}')">Approve</button>
+            <button class="admin-del" onclick="adminRejectAd('${a.id}')">Reject</button>
+          </span>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    list.innerHTML = '<div class="admin-empty">Couldn\'t load pending ads.</div>';
+  }
+}
+
+async function previewAdFile(path){
+  try{
+    const { data } = await sb.storage.from('ad-files').createSignedUrl(path, 120);
+    if(data && data.signedUrl) window.open(data.signedUrl, '_blank', 'noopener');
+    else toast('Could not open file', '✕');
+  }catch(e){ toast('Could not open file', '✕'); }
+}
+
+async function adminApproveAd(id){
+  try{
+    const { data, error } = await sb.rpc('admin_approve_ad', { p_id: id });
+    if(error) throw error;
+    if(data && data.error) throw new Error(data.error);
+    const row = document.getElementById('adrow-' + id);
+    if(row) row.remove();
+    if(!document.querySelector('#adminAdsList .admin-row')){
+      document.getElementById('adminAdsList').innerHTML = '<div class="admin-empty">No pending ads right now.</div>';
+    }
+    toast('Ad approved and activated', '✓');
+  }catch(e){ toast("Couldn't approve ad — try again", '✕'); }
+}
+
+async function adminRejectAd(id){
+  try{
+    const { data, error } = await sb.rpc('admin_reject_ad', { p_id: id });
+    if(error) throw error;
+    if(data && data.error) throw new Error(data.error);
+    const row = document.getElementById('adrow-' + id);
+    if(row) row.remove();
+    if(!document.querySelector('#adminAdsList .admin-row')){
+      document.getElementById('adminAdsList').innerHTML = '<div class="admin-empty">No pending ads right now.</div>';
+    }
+    toast('Ad rejected', '✓');
+  }catch(e){ toast("Couldn't reject ad — try again", '✕'); }
 }
 function closeAdmin(){
   document.getElementById('adminModal').style.display = 'none';

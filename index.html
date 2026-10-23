@@ -2813,37 +2813,94 @@ function render(){
   }).join('');
 }
 
-// ---- Skippable Pre-roll Ad ----
-const AD_VIDEO_URL = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
-const AD_SKIP_AFTER = 5; // seconds until skip button becomes active
-
+// ---- Skippable Pre-roll Ad (loads real active ads from Supabase) ----
+const AD_SKIP_AFTER = 5;
 let currentAdCallback = null;
+let activeAdsCache = null;
+let activeAdsLoadedAt = 0;
 
-function showSkippableAd(onDone) {
+async function loadActiveAds(){
+  // cache for 2 minutes
+  if(activeAdsCache && Date.now() - activeAdsLoadedAt < 120000) return activeAdsCache;
+  try{
+    const { data, error } = await sb.from('ads')
+      .select('id, kind, title, link, file_path, file_name')
+      .eq('status', 'active')
+      .gt('ends_at', new Date().toISOString())
+      .order('created_at', { ascending: false });
+    if(error) throw error;
+    activeAdsCache = data || [];
+    activeAdsLoadedAt = Date.now();
+    return activeAdsCache;
+  }catch(e){
+    activeAdsCache = [];
+    return [];
+  }
+}
+
+async function getAdMediaUrl(path){
+  if(!path) return null;
+  try{
+    const { data } = await sb.storage.from('ad-files').createSignedUrl(path, 300);
+    return data && data.signedUrl ? data.signedUrl : null;
+  }catch(e){ return null; }
+}
+
+async function showSkippableAd(onDone) {
   const overlay = document.getElementById('ad-overlay');
   const video   = document.getElementById('ad-video');
   const skipBtn = document.getElementById('ad-skip');
 
   if (!overlay || !video || !skipBtn) {
-    // fallback if something is missing
     if (onDone) onDone();
     return;
   }
 
   currentAdCallback = onDone;
 
-  // reset
+  // Try to load a real active ad (prefer preroll, then free with video, then any)
+  const ads = await loadActiveAds();
+  let chosen = null;
+  if(ads.length){
+    const prerolls = ads.filter(a => a.kind === 'preroll' || (a.file_name && /\.(mp4|webm|mov)$/i.test(a.file_name)));
+    const pool = prerolls.length ? prerolls : ads;
+    chosen = pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  // If no active ads, skip straight to the stream
+  if(!chosen || !chosen.file_path){
+    if(currentAdCallback){ currentAdCallback(); currentAdCallback = null; }
+    return;
+  }
+
+  const mediaUrl = await getAdMediaUrl(chosen.file_path);
+  if(!mediaUrl){
+    if(currentAdCallback){ currentAdCallback(); currentAdCallback = null; }
+    return;
+  }
+
+  // reset UI
   skipBtn.classList.remove('ready');
   skipBtn.textContent = 'Skip in ' + AD_SKIP_AFTER + 's';
-  video.src = AD_VIDEO_URL;
+  video.src = mediaUrl;
   video.currentTime = 0;
 
-  overlay.classList.add('show');
+  // Show title / link under the video if we have them
+  let label = document.getElementById('ad-label-text');
+  if(!label){
+    label = document.createElement('div');
+    label.id = 'ad-label-text';
+    label.style.cssText = 'color:#ccc;font-size:13px;margin-top:8px;text-align:center;max-width:900px';
+    const controls = document.querySelector('.ad-controls');
+    if(controls) controls.parentNode.insertBefore(label, controls);
+  }
+  label.innerHTML = chosen.title
+    ? `<b style="color:#fff">${esc(chosen.title)}</b>${chosen.link ? ` · <a href="${esc(chosen.link)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(chosen.link.replace(/^https?:\/\//,''))}</a>` : ''}`
+    : 'Advertisement';
 
-  // try to play
+  overlay.classList.add('show');
   video.play().catch(() => {});
 
-  // countdown for skip button
   let left = AD_SKIP_AFTER;
   const timer = setInterval(() => {
     left--;
@@ -2856,10 +2913,7 @@ function showSkippableAd(onDone) {
     }
   }, 1000);
 
-  // when video ends
   video.onended = () => finishAd();
-
-  // skip button
   skipBtn.onclick = () => finishAd();
 
   function finishAd() {

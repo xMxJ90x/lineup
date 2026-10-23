@@ -2849,25 +2849,28 @@ async function getAdMediaUrl(path){
 async function showSkippableAd(onDone) {
   const overlay = document.getElementById('ad-overlay');
   const video   = document.getElementById('ad-video');
+  const image   = document.getElementById('ad-image');
   const skipBtn = document.getElementById('ad-skip');
+  const label   = document.getElementById('ad-label-text');
 
-  if (!overlay || !video || !skipBtn) {
+  if (!overlay || !skipBtn) {
     if (onDone) onDone();
     return;
   }
 
   currentAdCallback = onDone;
 
-  // Try to load a real active ad (prefer preroll, then free with video, then any)
+  // Load active ads
   const ads = await loadActiveAds();
   let chosen = null;
   if(ads.length){
-    const prerolls = ads.filter(a => a.kind === 'preroll' || (a.file_name && /\.(mp4|webm|mov)$/i.test(a.file_name)));
-    const pool = prerolls.length ? prerolls : ads;
+    // Prefer video ads, otherwise any active ad
+    const videos = ads.filter(a => a.file_name && /\.(mp4|webm|mov)$/i.test(a.file_name));
+    const pool = videos.length ? videos : ads;
     chosen = pool[Math.floor(Math.random() * pool.length)];
   }
 
-  // If no active ads, skip straight to the stream
+  // No active ads → go straight to stream
   if(!chosen || !chosen.file_path){
     if(currentAdCallback){ currentAdCallback(); currentAdCallback = null; }
     return;
@@ -2875,31 +2878,37 @@ async function showSkippableAd(onDone) {
 
   const mediaUrl = await getAdMediaUrl(chosen.file_path);
   if(!mediaUrl){
+    console.warn('Could not get signed URL for ad', chosen.file_path);
     if(currentAdCallback){ currentAdCallback(); currentAdCallback = null; }
     return;
   }
 
-  // reset UI
+  const isVideo = chosen.file_name && /\.(mp4|webm|mov)$/i.test(chosen.file_name);
+
+  // Reset
   skipBtn.classList.remove('ready');
   skipBtn.textContent = 'Skip in ' + AD_SKIP_AFTER + 's';
-  video.src = mediaUrl;
-  video.currentTime = 0;
+  if(video){ video.style.display = 'none'; video.removeAttribute('src'); video.pause(); }
+  if(image){ image.style.display = 'none'; image.removeAttribute('src'); }
 
-  // Show title / link under the video if we have them
-  let label = document.getElementById('ad-label-text');
-  if(!label){
-    label = document.createElement('div');
-    label.id = 'ad-label-text';
-    label.style.cssText = 'color:#ccc;font-size:13px;margin-top:8px;text-align:center;max-width:900px';
-    const controls = document.querySelector('.ad-controls');
-    if(controls) controls.parentNode.insertBefore(label, controls);
+  if(label){
+    label.innerHTML = chosen.title
+      ? `<b style="color:#fff">${esc(chosen.title)}</b>${chosen.link ? ` · <a href="${esc(chosen.link)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(chosen.link.replace(/^https?:\/\//,''))}</a>` : ''}`
+      : 'Advertisement';
   }
-  label.innerHTML = chosen.title
-    ? `<b style="color:#fff">${esc(chosen.title)}</b>${chosen.link ? ` · <a href="${esc(chosen.link)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(chosen.link.replace(/^https?:\/\//,''))}</a>` : ''}`
-    : 'Advertisement';
 
   overlay.classList.add('show');
-  video.play().catch(() => {});
+
+  if(isVideo && video){
+    video.style.display = 'block';
+    video.src = mediaUrl;
+    video.currentTime = 0;
+    video.play().catch(() => {});
+    video.onended = () => finishAd();
+  } else if(image){
+    image.style.display = 'block';
+    image.src = mediaUrl;
+  }
 
   let left = AD_SKIP_AFTER;
   const timer = setInterval(() => {
@@ -2913,13 +2922,12 @@ async function showSkippableAd(onDone) {
     }
   }, 1000);
 
-  video.onended = () => finishAd();
   skipBtn.onclick = () => finishAd();
 
   function finishAd() {
     clearInterval(timer);
-    video.pause();
-    video.removeAttribute('src');
+    if(video){ video.pause(); video.removeAttribute('src'); video.style.display = 'none'; }
+    if(image){ image.removeAttribute('src'); image.style.display = 'none'; }
     overlay.classList.remove('show');
     if (currentAdCallback) {
       currentAdCallback();
@@ -4744,7 +4752,9 @@ setTimeout(()=>{
 
 <!-- Skippable Ad Overlay -->
 <div id="ad-overlay">
-  <video id="ad-video" playsinline></video>
+  <video id="ad-video" playsinline style="display:none"></video>
+  <img id="ad-image" alt="Advertisement" style="display:none; max-width:900px; width:100%; max-height:70vh; border-radius:12px; object-fit:contain; background:#000;">
+  <div id="ad-label-text" style="color:#ccc;font-size:13px;margin-top:10px;text-align:center;max-width:900px"></div>
   <div class="ad-controls">
     <span class="ad-label">Advertisement</span>
     <button id="ad-skip">Skip Ad →</button>
